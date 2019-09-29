@@ -64,18 +64,190 @@
 <h1>Jenkins Built From Code</h1>
 
 
-<p>It has been already two years since I started working with Jenkins. My daily duty goes from, supervise the execution of prehistoric Jobs to satisfy a complex and pretty old app deployment, to mantain and enahance declarative multibranch pipelines with the main goal of achiveing a continuous integration and continuous deployment set of phases that promotes packaged software through a lot of environments untill it reaches the client hands.</p>
+<p>It has been some time since I started working with Jenkins. One of my daily duties with this tool goes from, supervise the execution of legacy Jobs, to maintain and enhance declarative multibranch pipelines, always trying to achieve continuous integration and continuous delivery practices to promote packaged software through many environments until it gets the client&rsquo;s hands.</p>
 
-<p>Reaching out such a level of automation involves, time, teams &amp; processes. From my experience working in a big company, It&rsquo;s a task that requires a lot of time and effort, everyone involved on the Software Development &amp; Delivery proccess has to take hands on this new way of thinking &amp; working, and adapt to it.</p>
+<p>Reaching out such a level of automation involves time, teams &amp; processes. From my experience, It&rsquo;s a task that requires a lot of time and effort, everyone involved in the Software Development &amp; Delivery process has to take hands on this new way of thinking &amp; working, and adapt to it.</p>
 
-<p>After spreading a bit my thoughs on the Devops culture, I would like to focus once again on the Jenkins topic. I spend most of my time working between environments and for each environment I work on a completely different Jenkins, actually I test new features from fancy plugins that improves and clarifies the Software Delivery proccess on a Dev environment and once I verify the new feature works well I spend more time promoting it to the rest of the environments. This sounds like a repetitive task, actually I tend to avoid this kind of tasks, for over the years I persue the adoption of EaC (<em>laughs</em>), Everything as Code, but for some reason I had no chance to apply it yet on the Jenkins installation scope.</p>
+<p>After spreading a bit my thoughts on the DevOps culture, I would like to focus once again on the Jenkins topic. I spend most of my time between environments, and for each environment I work on an entirely different Jenkins, actually I test new features from fancy plugins that improve and clarifies the Software Delivery process on a Dev environment and once I verify the new feature works well I spend more time promoting it to the rest of the environments, this sounds like a repetitive task, actually I tend to avoid this kind of tasks, for over the years I pursue the adoption of EaC, Everything as Code, but for some reason, I had no chance to apply it yet on the Jenkins installation scope.</p>
 
-<p>So that&rsquo;s the main topic, I found a weakness on my daily duty, I am trying to achieve a proper fix and I&rsquo;ll write about it.</p>
+<p>So that&rsquo;s the main topic, I found a weakness on my daily duty, I am trying to achieve a solution, and I&rsquo;ll write about it.</p>
 
 <h2 id="the-goal">The Goal.</h2>
 
-<p>&ndash; Conclusions
-[*] There are plenty of better approaches for the multi environment deployment procedure. I guess most of the people thinks that a single Jenkins across all the environments could do the job, and that&rsquo;s right but it also depends on multiple factors, the one I hold to is having complete isolated environments, with independent data centers and network settings. When you work for big companies you have to adapt to the technical debt and way of working, and try to minimize its impact step by step without neglecting customer main needs.</p>
+<p>The desired state I would like to reach is to be able to build a Jenkins instance where all of its configuration and Job definitions go in declarative files, this way we have immutable Jenkins instances that deploy on any environment, whenever you add a plugin, job or modify a configuration it gets stored and versioned on Git, this way, no unknown configuration is able to break the desired state of the instances anymore and anyone can deploy the exact state on their localhost, for testing purposes for example.</p>
+
+<h2 id="how-to">How to?</h2>
+
+<p>I have decided to structure the project in two repositories.</p>
+
+<p>There&rsquo;s an initial project to set up the configuration at Jenkins instance level. On a file, we add the plugins to install and lock their versions, one of the plugins &lsquo;Jenkins Configuration as Code&rsquo; lets us predefine the global configuration of Jenkins and the rest of the plugins without interacting with the Jenkins UI, finally a Dockerfile is used to build a Docker image that includes all the initialization files.</p>
+
+<p>A second project is used to interact with the &lsquo;Jenkins DSL&rsquo; plugin; the goal is to store the jobs, folders, and views as code on groovy files, so only what we have defined on our Git repository applies to the Jenkins instance.</p>
+
+<p>I have decided to structure the project in two repositories.</p>
+
+<h3 id="docker">Docker.</h3>
+
+<p>A widely known implementation of the Container software abstraction is used to pack, gather dependencies, and automate the deployment. We are going to build the Jenkins Instance using a Dockerfile.</p>
+
+<pre><code class="language-Dockerfile">FROM jenkins/jenkins:lts
+
+
+COPY init-scripts /usr/share/jenkins/ref/init.groovy.d
+
+ADD plugins.txt /usr/share/jenkins/ref/
+ADD jenkins.yaml /usr/share/jenkins/ref/
+
+RUN /usr/local/bin/install-plugins.sh &lt; /usr/share/jenkins/ref/plugins.txt
+
+ENV CASC_JENKINS_CONFIG /usr/share/jenkins/ref/
+
+VOLUME /var/jenkins_home
+</code></pre>
+
+<p>The following shell script can be a useful resource to launch the build phase.</p>
+
+<pre><code class="language-bash">#!/usr/bin/env bash
+
+docker build -t jenkins_as_code:0.1.0 .
+</code></pre>
+
+<p>There are two phases, the one that builds the container image and the phase that runs it.</p>
+
+<h2 id="build-phase">Build phase.</h2>
+
+<h3 id="plugins-installation">Plugins Installation.</h3>
+
+<p>To automate the installation of the desired plugins, we are going to make use of an existing shell script included in Jenkins. The script its located at <code>/usr/local/bin/</code>, inside the container, with the following name <code>install-plugins.sh</code>, to install the plugins save them inside a file and call the script with the file as a parameter.</p>
+
+<pre><code>workflow-aggregator:2.6
+configuration-as-code:1.30
+configuration-as-code-support:1.18
+credentials:2.3.0
+blueocean:1.19.0
+job-dsl:1.74
+</code></pre>
+
+<p>Now we can store in code the plugins that need to be installed and lock their versions.</p>
+
+<h3 id="jcac-jenkins-plugin">JCaC Jenkins Plugin.</h3>
+
+<p>Working on Jenkins involves many plugin installations, for each plugin a specific configuration must be set up. All these configuration changes add up through time; a Jenkins instance tends to evolve based on the needs of the software delivery process.</p>
+
+<p>The GUI is used to configure Jenkins; the thing is that there is no place to centralize and store what configurations are applied other than browsing it through the Web.</p>
+
+<p>Most of the people have been solving this issue using groovy initialization scripts. It works, but as it involves some coding, its not as friendly and readable as desired.</p>
+
+<p>The good news is the existence of a <a href="https://plugins.jenkins.io/configuration-as-code">plugin</a> that lets you define the global and plugin configurations through a YAML file. It&rsquo;s great because it handles the configuration changes and we can deploy an initial Jenkins install with all the configurations already applied.</p>
+
+<p>So we can progress on the primary goal, the deployment of immutable Jenkins instances defined by versioned configuration files.</p>
+
+<p>This plugin even lets you define a seed job, its a job that fetches DSL files and applies the changes creating other Jobs, views, and many more features.</p>
+
+<p>In our case the following <code>jenkins.yaml</code> file is used to provide the configuration. The seed job fetches another project from Github that contains a few DSL based objects to create resources.</p>
+
+<pre><code class="language-yaml">---
+jenkins:
+  systemMessage: &quot;Jenkins As Code Concept.&quot;
+  views:
+    - myView:
+        name: &quot;Jobs Config as Code&quot;
+security:
+  globalJobDslSecurityConfiguration:
+    useScriptSecurity: false
+jobs:
+  - script: &gt;
+      freeStyleJob(&quot;Jobs Generator&quot;) {
+        scm {
+            github('imvalient/jenkins_as_code_jobs', 'master')
+        }
+        steps {
+            dsl {
+              external('*.groovy')
+            }
+        }
+      }
+
+</code></pre>
+
+<p>A great thing about this plugin is that you can modify the YAML file and reload the new configuration, applying all the changes without the need to recreate the Jenkins instance.</p>
+
+<h2 id="runtime-phase">Runtime phase.</h2>
+
+<h3 id="default-user">Default User.</h3>
+
+<p>While working on this, I faced an issue trying to automate, the creation of a default administrator user through a configuration file.</p>
+
+<p>To solve it, I did some research and found a <a href="https://github.com/thbkrkr/jks/blob/master/init.groovy.d/1-create-admin-user.groovy">repository</a> that makes use of Groovy initialization scripts; the script goes inside the container in the <code>/usr/share/jenkins/ref/init.groovy.d</code> directory.</p>
+
+<p>This way, to create the user, we only have to fill the following environment variables</p>
+
+<pre><code>ADMIN_USERNAME=
+ADMIN_PASSWORD=
+</code></pre>
+
+<h3 id="skip-the-wizard">Skip the Wizard.</h3>
+
+<p>Every time you deploy a new Jenkins instance, the first time you log in, you get prompted with a Configuration Wizard that helps you set up a few initial parameters and install some suggested plugins.</p>
+
+<p>For newcomers, this can be kind of helpful, but we are trying to achieve automation that deploys what it&rsquo;s written in the configuration files, so we don&rsquo;t need this feature.</p>
+
+<p>The way to avoid it is to run the container with the following environment variable.</p>
+
+<pre><code class="language-bash">JAVA_OPTS=&quot;-Djenkins.install.runSetupWizard=false&quot;
+</code></pre>
+
+<h2 id="get-it-running">Get It Running.</h2>
+
+<p>I work on a Linux based OS; it makes it easier for me to get things done, if you&rsquo;re not already on a Unix based OS I suggest you think about the change.</p>
+
+<p>To get this working, you need Bash and Docker. Once you satisfy these requirements, you can clone the <a href="https://github.com/imanol-dev/jenkins_as_code">project</a>.</p>
+
+<pre><code>.
+├── init-scripts
+│   └── admin-user.groovy
+├── config
+│   └── runtime.env
+├── Dockerfile
+├── jenkins.yaml
+├── plugins.txt
+├── build
+└── run
+</code></pre>
+
+<p>The first step is building the Docker image from the current directory. There&rsquo;s a bash script to do this named <code>build</code>. It&rsquo;s a basic docker build command to generate the <code>jenkins_as_code</code> image in your local registry.</p>
+
+<p>Once the image builds, it is time to get it running. There&rsquo;s another script <code>run</code> that runs the built image; it shares a volume to store the data Jenkins generates on the <code>/var/jenkins_home</code> directory (It&rsquo;s a must to create the <code>jenkins_home</code> directory before running the container), exposes the 8080 port and loads the <code>config/runtime.env</code> file as an environment file.</p>
+
+<p>The Jenkins instance can be accessed through a web browser on the following <code>localhost:8080</code> URL, sign in using the credentials initially set on the <code>config/runtime.env</code> file.</p>
+
+<p>Once inside, there&rsquo;s a seed job to generate, through the DSL plugin, the rest of the desired jobs.</p>
+
+<h2 id="job-dsl-plugin-jobs-definition">Job DSL Plugin. Jobs definition.</h2>
+
+<p>I have found a few ways to create Jenkins jobs; you can create them manually through the web interface, define them on XML files using the Jenkins CLI to import them and make use of the DSL plugin to define them more human-readable.</p>
+
+<p>The <a href="https://plugins.jenkins.io/job-dsl">DSL plugin</a> lets you define jobs on a declarative form, more human-readable.</p>
+
+<p>I have defined a few jobs on a separate <a href="https://github.com/imanol-dev/jenkins_as_code_jobs">repository</a>, using the seed job, I reference this repository, so after executing it, all the new jobs appear automatically. The seed job can be triggered off a git change, so if you delete or modify a job through code, this gets updated on the Jenkins instance without manual execution.</p>
+
+<p>If you have the Jenkins instance running, roll the seed job to create the new Jenkins objects.</p>
+
+<h2 id="what-about-ansible">What about Ansible?</h2>
+
+<p>I did some research about this matter solved with Ansible, and I&rsquo;ve found a few roles that let you install Jenkins in remote machines through Ansible Roles. There&rsquo;s a role that caught my attention that lets you tune up the configurations, setting up the variables associated to the role, this approach lets you choose between Containerized or VM deployments and define as code all your Jenkins Jobs in an XML format.</p>
+
+<p>From my point of view <a href="https://github.com/emmetog/ansible-jenkins">this role</a> its a great option but I wrote this post to easily store all your Jenkins Configurations and Job definitions as code in Docker containers, I am planning to evolve this first approach to end deploying a Jenkins cluster in Kubernetes using Helm so, from my point of view, Ansible does not fit for what I initially planned.</p>
+
+<h2 id="conclusions">Conclusions</h2>
+
+<p>There are plenty of better approaches for the multi-environment deployment matter. A single Jenkins across all the environments could do the job, but sometimes it&rsquo;s not only about the best technical solution.</p>
+
+<p>In my case, sometimes, I have to adapt to entirely isolated environments, with independent data centers and different network settings for the same project. A few years already in the business world have taught me that there&rsquo;s probably something more significant than my ideas already running and I have to adapt to it.</p>
+
+<p>I enjoyed this research; I wanted to find a way to automate a few repetitive and manual tasks so I could deploy multiple Jenkins instances with the same configurations but with different Jobs.</p>
+
+<p>Thanks for reading and if, in some manner, this is helpful for you, do not hesitate writing me.</p>
 
   
 
@@ -84,7 +256,7 @@
   
   <script>
   window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
-  ga('create', 'UA-123456789-1', 'auto');
+  ga('create', 'G-60080HYYJV', 'auto');
   ga('send', 'pageview');
   </script>
   <script async src='https://www.google-analytics.com/analytics.js'></script>
