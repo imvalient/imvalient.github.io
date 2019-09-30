@@ -12,11 +12,11 @@
     
     
     <item>
-      <title>Jenkins Built From Code</title>
-      <link>https://imvalient.github.io/posts/jenkins-built-from-code/</link>
+      <title>Jenkins Configuration As Code</title>
+      <link>https://imvalient.github.io/posts/jenkins-configuration-as-code/</link>
       <pubDate>Tue, 17 Sep 2019 23:51:43 +0200</pubDate>
       
-      <guid>https://imvalient.github.io/posts/jenkins-built-from-code/</guid>
+      <guid>https://imvalient.github.io/posts/jenkins-configuration-as-code/</guid>
       <description>It has been some time since I started working with Jenkins. One of my daily duties with this tool goes from, supervise the execution of legacy Jobs, to maintain and enhance declarative multibranch pipelines, always trying to achieve continuous integration and continuous delivery practices to promote packaged software through many environments until it gets the client&amp;rsquo;s hands.
 Reaching out such a level of automation involves time, teams &amp;amp; processes. From my experience, It&amp;rsquo;s a task that requires a lot of time and effort, everyone involved in the Software Development &amp;amp; Delivery process has to take hands on this new way of thinking &amp;amp; working, and adapt to it.</description>
     </item>
