@@ -74,15 +74,15 @@
 
 <h2 id="the-goal">The Goal.</h2>
 
-<p>The desired state I would like to reach is to be able to build a Jenkins instance where all of its configuration and Job definitions go in declarative files, this way we have immutable Jenkins instances that deploy on any environment, whenever you add a plugin, job or modify a configuration it gets stored and versioned on Git, this way, no unknown configuration is able to break the desired state of the instances anymore and anyone can deploy the exact state on their localhost, for testing purposes for example.</p>
+<p>The desired state I would like to reach is to be able to build a Jenkins instance where all of its configuration and Job definitions goes in declarative files, this way we have immutable Jenkins instances that deploy on any environment, whenever you add a plugin, job or modify a configuration it gets stored and versioned on Git, this way, no unknown configuration is able to break the desired state of the instances anymore and anyone can deploy the exact state on their localhost, for testing purposes for example.</p>
 
 <h2 id="how-to">How to?</h2>
 
 <p>I have decided to structure the project in two repositories.</p>
 
-<p>There&rsquo;s an initial project to set up the configuration at Jenkins instance level. On a file, we add the plugins to install and lock their versions, one of the plugins &lsquo;Jenkins Configuration as Code&rsquo; lets us predefine the global configuration of Jenkins and the rest of the plugins without interacting with the Jenkins UI, finally a Dockerfile is used to build a Docker image that includes all the initialization files.</p>
+<p>There&rsquo;s an initial project to set up the configuration at Jenkins instance level. On a file, we add the plugins to install and lock their versions, one of the plugins <code>Jenkins Configuration as Code</code> lets us predefine the global configuration of Jenkins and the rest of the plugins without interacting with the Jenkins UI, finally a Dockerfile is used to build a Docker image that includes all the initialization files.</p>
 
-<p>A second project is used to interact with the &lsquo;Jenkins DSL&rsquo; plugin; the goal is to store the jobs, folders, and views as code on groovy files, so only what we have defined on our Git repository applies to the Jenkins instance.</p>
+<p>A second project is used to interact with the <code>Jenkins DSL</code> plugin; the goal is to store the jobs, folders, and views as code on groovy files, so only what we have defined on our Git repository applies to the Jenkins instance.</p>
 
 <p>I have decided to structure the project in two repositories.</p>
 
@@ -159,7 +159,7 @@ jobs:
   - script: &gt;
       freeStyleJob(&quot;Jobs Generator&quot;) {
         scm {
-            github('imvalient/jenkins_as_code_jobs', 'master')
+            github('imanol-dev/jenkins_as_code_jobs', 'master')
         }
         steps {
             dsl {
@@ -176,7 +176,7 @@ jobs:
 
 <h3 id="default-user">Default User.</h3>
 
-<p>While working on this, I faced an issue trying to automate, the creation of a default administrator user through a configuration file.</p>
+<p>While working on this, I faced an issue trying to automate the creation of a default administrator user through a configuration file.</p>
 
 <p>To solve it, I did some research and found a <a href="https://github.com/thbkrkr/jks/blob/master/init.groovy.d/1-create-admin-user.groovy">repository</a> that makes use of Groovy initialization scripts; the script goes inside the container in the <code>/usr/share/jenkins/ref/init.groovy.d</code> directory.</p>
 
@@ -225,7 +225,7 @@ ADMIN_PASSWORD=
 
 <h2 id="job-dsl-plugin-jobs-definition">Job DSL Plugin. Jobs definition.</h2>
 
-<p>I have found a few ways to create Jenkins jobs; you can create them manually through the web interface, define them on XML files using the Jenkins CLI to import them and make use of the DSL plugin to define them more human-readable.</p>
+<p>I have found a few ways to create Jenkins jobs; you can create them manually through the web interface, define them on XML files using the Jenkins CLI to import them, and make use of the DSL plugin.</p>
 
 <p>The <a href="https://plugins.jenkins.io/job-dsl">DSL plugin</a> lets you define jobs on a declarative form, more human-readable.</p>
 
@@ -247,7 +247,7 @@ ADMIN_PASSWORD=
 
 <p>I enjoyed this research; I wanted to find a way to automate a few repetitive and manual tasks so I could deploy multiple Jenkins instances with the same configurations but with different Jobs.</p>
 
-<p>Thanks for reading and if, in some manner, this is helpful for you, do not hesitate writing me.</p>
+<p>Thanks for reading and if in some manner, this is helpful for you, do not hesitate writing me.</p>
 
   
 
